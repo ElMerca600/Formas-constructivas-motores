@@ -126,10 +126,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawMotorSVG(vals) {
-        // Pseudo-isometric Side Profile drawing
-        // This effectively shows the true layout geometry.
+        // Realistic side-profile of a three-phase squirrel-cage induction motor:
+        // finned frame, NDE fan cover, DE end-shield, shaft with keyway,
+        // flange with bolt circle, feet with fixing holes, detailed terminal box.
         let svg = `<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">`;
-        
+
+        svg += `<defs>
+            <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#64748b"/>
+                <stop offset="18%" stop-color="#475569"/>
+                <stop offset="55%" stop-color="#334155"/>
+                <stop offset="100%" stop-color="#1a2333"/>
+            </linearGradient>
+            <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e2e8f0"/>
+                <stop offset="35%" stop-color="#cbd5e1"/>
+                <stop offset="75%" stop-color="#94a3b8"/>
+                <stop offset="100%" stop-color="#64748b"/>
+            </linearGradient>
+            <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#475569"/>
+                <stop offset="50%" stop-color="#334155"/>
+                <stop offset="100%" stop-color="#1a2333"/>
+            </linearGradient>
+            <linearGradient id="boxGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#38bdf8"/>
+                <stop offset="100%" stop-color="#0284c7"/>
+            </linearGradient>
+            <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="0" y2="7" stroke="#334155" stroke-width="3"/>
+            </pattern>
+        </defs>`;
+
         // Groups for rotation context
         let mainRotation = 0;
         if (vals.iec.axis === "vertical_down") { mainRotation = -90; }
@@ -137,71 +165,101 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cx = 250;
         const cy = 250;
-        
+
         svg += `<g transform="rotate(${mainRotation}, ${cx}, ${cy})">`;
-        
-        // Motor Body (Cylinder profile)
-        svg += `<rect x="150" y="170" width="200" height="160" rx="10" fill="#1e293b" stroke="#475569" stroke-width="4"/>`;
-        svg += `<line x1="170" y1="170" x2="170" y2="330" stroke="#334155" stroke-width="2"/>`;
-        svg += `<line x1="330" y1="170" x2="330" y2="330" stroke="#334155" stroke-width="2"/>`;
 
-        // Shaft (Drive End context is Left for side-views)
-        svg += `<rect x="70" y="235" width="80" height="30" fill="#94a3b8" stroke="#334155" stroke-width="2"/>`;
-        svg += `<rect x="80" y="230" width="20" height="5" fill="#cbd5e1"/>`; // keyway hint
-
-        // Flange (D-End)
-        if (vals.iec.type.includes("Flange") || vals.iec.type.includes("Face")) {
-            const fH = vals.iec.flangeSize === "large" ? 220 : 160;
-            const fY = cx - (fH/2);
-            svg += `<rect x="130" y="${fY}" width="20" height="${fH}" rx="4" fill="#334155" stroke="#475569" stroke-width="4"/>`;
-        }
-
-        // Feet (Base orientation)
+        // ---- Mounting feet (drawn behind the body) ----
         if (vals.iec.type.includes("Foot")) {
-            let feetY = 330; 
             let rotateFeet = 0;
             if (vals.iec.wall === "left") { rotateFeet = -90; }    // Wall left
             if (vals.iec.wall === "right") { rotateFeet = 90; }     // Wall right
             if (vals.iec.wall === "top") { rotateFeet = 180; }      // Ceiling
-            if (vals.iec.wall === "side") { rotateFeet = 90; }      // Wall vertical
 
             svg += `<g transform="rotate(${rotateFeet}, ${cx}, ${cy})">`;
-            // Draw feet at the "bottom"
-            svg += `<path d="M 180 330 L 160 360 L 340 360 L 320 330 Z" fill="#1e293b" stroke="#475569" stroke-width="4" stroke-linejoin="round"/>`;
-            svg += `<rect x="140" y="360" width="220" height="8" fill="#475569" />`; // Ground indicator
+            svg += `<rect x="150" y="344" width="190" height="12" fill="url(#hatch)" stroke="#1e293b" stroke-width="1"/>`; // mounting surface
+            svg += `<path d="M 175 328 L 195 328 L 215 344 L 155 344 Z" fill="url(#bodyGrad)" stroke="#0f172a" stroke-width="3" stroke-linejoin="round"/>`;
+            svg += `<circle cx="172" cy="337" r="4" fill="#0f172a"/>`;
+            svg += `<circle cx="198" cy="337" r="4" fill="#0f172a"/>`;
+            svg += `<path d="M 315 328 L 295 328 L 275 344 L 335 344 Z" fill="url(#bodyGrad)" stroke="#0f172a" stroke-width="3" stroke-linejoin="round"/>`;
+            svg += `<circle cx="318" cy="337" r="4" fill="#0f172a"/>`;
+            svg += `<circle cx="292" cy="337" r="4" fill="#0f172a"/>`;
             svg += `</g>`;
         }
 
-        // Terminal Box
-        // On side view, Top is y=110, Right is towards us (centered), Left is away from us.
-        let boxX = 220, boxY = 170, boxW = 80, boxH = 50;
-        let pStroke = "#0284c7";
-        let pFill = "#0ea5e9";
-        
-        if (vals.position === "T") {
-            boxY = 120;
-        } else if (vals.position === "R") {
-            boxY = 210; boxH = 80;
-            pFill = "rgba(14, 165, 233, 0.9)"; // Front projection
-        } else if (vals.position === "L") {
-            boxY = 210; boxH = 80;
-            pFill = "rgba(14, 165, 233, 0.4)"; // Back projection
-            pStroke = "rgba(2, 132, 199, 0.4)";
+        // ---- Frame (finned cylindrical body) ----
+        svg += `<rect x="150" y="176" width="190" height="152" rx="10" fill="url(#bodyGrad)" stroke="#0f172a" stroke-width="3"/>`;
+        for (let fy = 186; fy <= 312; fy += 15) {
+            svg += `<rect x="152" y="${fy}" width="186" height="4" rx="2" fill="#1a2333" opacity="0.55"/>`;
+            svg += `<rect x="152" y="${fy - 2}" width="186" height="2" rx="1" fill="#7c8ba1" opacity="0.45"/>`;
+        }
+        // Nameplate
+        svg += `<rect x="205" y="242" width="80" height="26" rx="2" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>`;
+        svg += `<line x1="212" y1="250" x2="278" y2="250" stroke="#64748b" stroke-width="2"/>`;
+        svg += `<line x1="212" y1="257" x2="260" y2="257" stroke="#64748b" stroke-width="2"/>`;
+        svg += `<line x1="212" y1="264" x2="270" y2="264" stroke="#64748b" stroke-width="1.2"/>`;
+
+        // ---- NDE fan cover ----
+        svg += `<path d="M 340 178 Q 400 178 400 252 Q 400 326 340 326 Z" fill="url(#capGrad)" stroke="#0f172a" stroke-width="3"/>`;
+        svg += `<path d="M 352 200 Q 390 252 352 304" fill="none" stroke="#1a2333" stroke-width="3" opacity="0.6"/>`;
+        svg += `<path d="M 362 195 Q 396 252 362 309" fill="none" stroke="#1a2333" stroke-width="3" opacity="0.5"/>`;
+        svg += `<path d="M 372 192 Q 400 252 372 312" fill="none" stroke="#1a2333" stroke-width="2.5" opacity="0.4"/>`;
+        svg += `<circle cx="340" cy="252" r="5" fill="#0f172a"/>`;
+
+        // ---- DE end-shield / bearing housing ----
+        svg += `<rect x="118" y="212" width="40" height="80" rx="10" fill="url(#capGrad)" stroke="#0f172a" stroke-width="3"/>`;
+
+        // ---- Flange (D-End mounting disc, edge-on with bolt circle) ----
+        if (vals.iec.type.includes("Flange") || vals.iec.type.includes("Face")) {
+            const fH = vals.iec.flangeSize === "large" ? 230 : 168;
+            const fY = cy - (fH / 2);
+            svg += `<rect x="108" y="${fY}" width="22" height="${fH}" rx="8" fill="url(#metalGrad)" stroke="#334155" stroke-width="3"/>`;
+            const boltCount = 6;
+            for (let i = 0; i < boltCount; i++) {
+                const by = fY + 14 + (i * (fH - 28) / (boltCount - 1));
+                svg += `<circle cx="119" cy="${by}" r="3.5" fill="#334155"/>`;
+            }
         }
 
-        svg += `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="4" fill="${pFill}" stroke="${pStroke}" stroke-width="4"/>`;
+        // ---- Shaft (Drive End, protrudes to the left) ----
+        svg += `<rect x="60" y="238" width="60" height="28" fill="url(#metalGrad)" stroke="#334155" stroke-width="2"/>`;
+        svg += `<rect x="60" y="238" width="60" height="6" fill="#f1f5f9" opacity="0.6"/>`;
+        svg += `<rect x="72" y="233" width="26" height="6" rx="1" fill="#334155"/>`; // keyway
+        svg += `<path d="M 60 238 L 52 244 L 52 260 L 60 266 Z" fill="url(#metalGrad)" stroke="#334155" stroke-width="2"/>`;
 
-        // Cable entry represented by a small extension based on rotation (0,90,180,270)
-        let cxBox = boxX + boxW/2;
-        let cyBox = boxY + boxH/2;
+        // ---- Terminal Box ----
+        // On side view, Top is y=110, Right is towards us (centered), Left is away from us.
+        let boxX = 215, boxY = 176, boxW = 90, boxH = 46;
+        let pOpacity = 1;
+
+        if (vals.position === "T") {
+            boxY = 110;
+        } else if (vals.position === "R") {
+            boxY = 205; boxH = 90; // Front projection
+        } else if (vals.position === "L") {
+            boxY = 205; boxH = 90; pOpacity = 0.45; // Back projection (hidden face)
+        }
+
+        svg += `<g opacity="${pOpacity}">`;
+        svg += `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="6" fill="url(#boxGrad)" stroke="#0284c7" stroke-width="3"/>`;
+        svg += `<line x1="${boxX}" y1="${boxY + boxH * 0.32}" x2="${boxX + boxW}" y2="${boxY + boxH * 0.32}" stroke="#0284c7" stroke-width="2"/>`; // lid parting line
+        svg += `<circle cx="${boxX + 8}" cy="${boxY + 8}" r="2.5" fill="#0c4a6e"/>`;
+        svg += `<circle cx="${boxX + boxW - 8}" cy="${boxY + 8}" r="2.5" fill="#0c4a6e"/>`;
+        svg += `<circle cx="${boxX + 8}" cy="${boxY + boxH - 8}" r="2.5" fill="#0c4a6e"/>`;
+        svg += `<circle cx="${boxX + boxW - 8}" cy="${boxY + boxH - 8}" r="2.5" fill="#0c4a6e"/>`;
+
+        // Cable entry represented by a gland extension based on rotation (0,90,180,270)
+        let cxBox = boxX + boxW / 2;
+        let cyBox = boxY + boxH / 2;
         svg += `<g transform="rotate(${vals.rotation}, ${cxBox}, ${cyBox})">`;
-        svg += `<rect x="${cxBox-15}" y="${boxY-15}" width="30" height="15" fill="#475569"/>`;
-        svg += `<path d="M ${cxBox} ${boxY-15} L ${cxBox} ${boxY-50}" stroke="#f43f5e" stroke-width="8" stroke-linecap="round"/>`;
+        svg += `<rect x="${cxBox - 12}" y="${boxY - 14}" width="24" height="14" rx="3" fill="#475569" stroke="#1e293b" stroke-width="1.5"/>`;
+        svg += `<rect x="${cxBox - 6}" y="${boxY - 34}" width="12" height="22" rx="4" fill="#334155" stroke="#1e293b" stroke-width="1.5"/>`;
+        svg += `<path d="M ${cxBox} ${boxY - 34} L ${cxBox} ${boxY - 58}" stroke="#f43f5e" stroke-width="7" stroke-linecap="round"/>`;
         svg += `</g>`;
-        
+        svg += `</g>`;
+
         svg += `</g>`;
         svg += `</svg>`;
-        
+
         svgContainer.innerHTML = svg;
     }
 
