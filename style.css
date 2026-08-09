@@ -59,21 +59,11 @@ body {
     -webkit-backdrop-filter: blur(12px);
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--accent);
-    font-weight: 800;
-    font-size: 1.25rem;
-}
-
 .app-header h1 {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-main);
-    border-left: 2px solid var(--panel-border);
-    padding-left: 1rem;
+    padding-left: 0;
 }
 
 .dashboard {
